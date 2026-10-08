@@ -67,35 +67,26 @@ def generate_rain():
     return normalize(combined, target_db=-18.0)
 
 def generate_forest():
-    print("Generating atmosphere_forest.mp3...")
+    print("Generating atmosphere_forest.mp3 (Pure Tranquil Canopy & Leaves)...")
     t = np.linspace(0, DURATION, N_SAMPLES, endpoint=False)
-    # Wind turbulence
+    # Deep organic wind turbulence
     white = np.random.normal(0, 1, (N_SAMPLES, 2))
     wind = np.cumsum(white, axis=0)
     wind = wind - np.mean(wind, axis=0)
     wind = wind / np.max(np.abs(wind))
     
     # Slow dynamic forest breeze modulation
-    breeze = (0.5 + 0.3 * np.sin(2 * np.pi * 0.03 * t) + 0.2 * np.sin(2 * np.pi * 0.08 * t))[:, None]
+    breeze = (0.55 + 0.3 * np.sin(2 * np.pi * 0.025 * t) + 0.15 * np.sin(2 * np.pi * 0.07 * t))[:, None]
     forest_wind = wind * breeze
     
-    # Occasional distant bird warble chirps
-    birds = np.zeros((N_SAMPLES, 2))
-    n_chirps = int(DURATION * 12)
-    chirp_indices = np.random.randint(SR * 2, N_SAMPLES - SR * 2, n_chirps)
-    for idx in chirp_indices:
-        dur = int(SR * np.random.uniform(0.15, 0.35))
-        t_c = np.linspace(0, dur / SR, dur)
-        base_f = np.random.uniform(2600, 3800)
-        f_mod = base_f + 400 * np.sin(2 * np.pi * 18 * t_c)
-        env = np.sin(np.pi * np.linspace(0, 1, dur)) ** 2
-        phase = np.cumsum(2 * np.pi * f_mod / SR)
-        chirp = np.sin(phase) * env * 0.25
-        pan = np.random.uniform(0.2, 0.8)
-        birds[idx:idx+dur, 0] += chirp * (1.0 - pan)
-        birds[idx:idx+dur, 1] += chirp * pan
+    # Soft rustling leaves (filtered high-mid bandpass noise modulated by wind)
+    white2 = np.random.normal(0, 1, (N_SAMPLES, 2))
+    leaves_wash = np.cumsum(white2, axis=0)
+    leaves_wash = leaves_wash - np.mean(leaves_wash, axis=0)
+    leaves_wash = leaves_wash / np.max(np.abs(leaves_wash))
+    leaves = leaves_wash * (0.3 + 0.7 * np.abs(np.sin(2 * np.pi * 0.05 * t)))[:, None]
 
-    combined = forest_wind * 0.85 + birds * 0.15
+    combined = forest_wind * 0.75 + leaves * 0.25
     combined = make_seamless_loop(combined)
     return normalize(combined, target_db=-20.0)
 
@@ -226,19 +217,30 @@ def generate_historical():
     return normalize(combined, target_db=-20.0)
 
 def generate_action():
-    print("Generating atmosphere_action.mp3...")
+    print("Generating atmosphere_action.mp3 (Cinematic Battle Pulse, Campfire & Winds)...")
     t = np.linspace(0, DURATION, N_SAMPLES, endpoint=False)
-    # Roaring campfire crackle & gusting storm winds
+    # Deep roaring gusting winds
     white = np.random.normal(0, 1, (N_SAMPLES, 2))
     wind = np.cumsum(white, axis=0)
     wind = wind - np.mean(wind, axis=0)
     wind = wind / np.max(np.abs(wind))
-    gust = (0.6 + 0.4 * np.sin(2 * np.pi * 0.07 * t))[:, None]
+    gust = (0.55 + 0.45 * np.sin(2 * np.pi * 0.05 * t))[:, None]
     storm_wind = wind * gust
     
+    # Rhythmic low-frequency battle drum pulse (steady 60 bpm pulse)
+    bpm = 60.0
+    beat_interval = int(SR * (60.0 / bpm))
+    battle_pulse = np.zeros((N_SAMPLES, 2))
+    for beat_start in range(0, N_SAMPLES - SR, beat_interval):
+        hit_len = int(SR * 0.45)
+        t_hit = np.linspace(0, 0.45, hit_len)
+        hit_wave = (np.sin(2 * np.pi * 50.0 * t_hit) + 0.4 * np.sin(2 * np.pi * 100.0 * t_hit)) * np.exp(-t_hit * 8.0)
+        battle_pulse[beat_start:beat_start+hit_len, 0] += hit_wave * 0.45
+        battle_pulse[beat_start:beat_start+hit_len, 1] += hit_wave * 0.45
+
     # Campfire crackle impulses
     crackle = np.zeros((N_SAMPLES, 2))
-    n_pops = int(DURATION * 90)
+    n_pops = int(DURATION * 100)
     pop_indices = np.random.randint(0, N_SAMPLES - 3000, n_pops)
     for idx in pop_indices:
         dur = np.random.randint(200, 800)
@@ -251,7 +253,7 @@ def generate_action():
         crackle[idx:idx+dur, 0] += pop_w[:dur] * (1.0 - pan)
         crackle[idx:idx+dur, 1] += pop_w[:dur] * pan
         
-    combined = storm_wind * 0.65 + crackle * 0.35
+    combined = storm_wind * 0.45 + battle_pulse * 0.35 + crackle * 0.20
     combined = make_seamless_loop(combined)
     return normalize(combined, target_db=-18.0)
 
